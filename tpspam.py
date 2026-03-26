@@ -7,11 +7,14 @@ def lireMail(fichier, dictionnaire):
 	Lire un fichier et retourner un vecteur de booléens en fonctions du dictionnaire
 	"""
 	f = open(fichier, "r",encoding="ascii", errors="surrogateescape")
-	mots = f.read().split(" ")
+	mots = f.read().lower().split(" ")
 	
 	x = [False] * len(dictionnaire) 
 
-	# à modifier...
+	# on met True aux mots du dictionnaire qui sont présents dans le mail
+	for i in range(len(dictionnaire)):
+		if dictionnaire[i] in mots:
+			x[i] = True
 	
 	f.close()
 	return x
@@ -19,9 +22,17 @@ def lireMail(fichier, dictionnaire):
 def charge_dico(fichier):
 	f = open(fichier, "r")
 	mots = f.read().split("\n")
-	print("Chargé " + str(len(mots)) + " mots dans le dictionnaire")
 	f.close()
-	return mots[:-1]
+
+	# on ne garde que les mots dont la longueur est >= 3 et on les met en minuscules
+	mots_filtres = []
+	for mot in mots:
+		if len(mot) >= 3:
+			mots_filtres.append(mot.lower())
+	mots=mots_filtres
+
+	print("Chargé " + str(len(mots)) + " mots dans le dictionnaire")
+	return mots
 
 def apprendBinomial(dossier, fichiers, dictionnaire):
 	"""
@@ -63,8 +74,8 @@ def test(dossier, isSpam, Pspam, Pham, bspam, bham):
 
 ############ programme principal ############
 
-dossier_spams = "spam"	# à vérifier
-dossier_hams = "ham"
+dossier_spams = "spam/baseapp/spam"	# à vérifier
+dossier_hams = "spam/baseapp/ham"
 
 fichiersspams = os.listdir(dossier_spams)
 fichiershams = os.listdir(dossier_hams)
@@ -73,7 +84,7 @@ mSpam = len(fichiersspams)
 mHam = len(fichiershams)
 
 # Chargement du dictionnaire:
-dictionnaire = charge_dico("dictionnaire1000en.txt")
+dictionnaire = charge_dico("spam/dictionnaire1000en.txt")
 print(dictionnaire)
 
 # Apprentissage des bspam et bham:
