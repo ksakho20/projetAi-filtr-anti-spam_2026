@@ -67,8 +67,19 @@ def prediction(x, Pspam, Pham, bspam, bham):
 		Retourne True ou False.
 		
 	"""
+	#conversion pour s'assurer que ce sont des tableaux numpy
+	x = np.array(x)
+	bspam = np.array(bspam) 
+	bham = np.array(bham)
+
+	#probabilité que le mail soit un spam
+	proba_spam = np.log(Pspam) + np.sum(np.where(x, np.log(bspam), np.log(1-bspam)))
+	#probabilité que le mail ne soit pas un spam
+	proba_ham = np.log(Pham) + np.sum(np.where(x, np.log(bham), np.log(1-bham)))
+
+	isSpam = proba_spam > proba_ham
 	
-	return False  # à modifier...
+	return isSpam 
 	
 def test(dossier, isSpam, Pspam, Pham, bspam, bham):
 	"""
