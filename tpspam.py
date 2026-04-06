@@ -105,14 +105,32 @@ def test(dossier, isSpam, Pspam, Pham, bspam, bham):
 		Retourne le taux d'erreur 
 	"""
 	fichiers = os.listdir(dossier)
+	nb_erreurs = 0
+	label_reel = "SPAM" if isSpam else "HAM"
+	idx = 0  # compteur pour numéroter les mails
+
 	for fichier in fichiers:
-		print("Mail " + dossier+"/"+fichier)		
+		print("Mail " + dossier+"/"+fichier)
 
-		
-		# à compléter...
+		# lecture et conversion du mail en vecteur booléen
+		x = lireMail(dossier+"/"+fichier, dictionnaire)
+		# prédiction et récupération des probabilités a posteriori
+		pred_isSpam, Pspam_x, Pham_x = prediction(x, Pspam, Pham, bspam, bham)
+		label_predit = "SPAM" if pred_isSpam else "HAM"
 
-	return 0  # à modifier...
+		# affichage des probabilités a posteriori
+		print(f"{label_reel} numéro {idx} : P(Y=SPAM | X=x) = {Pspam_x:.6e}, P(Y=HAM | X=x) = {Pham_x:.6e}")
 
+		# détection des erreurs de classification
+		if pred_isSpam != isSpam:
+			nb_erreurs += 1
+			print(f"   => identifié comme un {label_predit} *** erreur ***")
+		else:
+			print(f"   => identifié comme un {label_predit}")
+
+		idx += 1
+
+	return (nb_erreurs / len(fichiers)) * 100  
 
 ############ programme principal ############
 
@@ -142,5 +160,17 @@ Pham = mHam / (mSpam + mHam)
 
 
 # Calcul des erreurs avec la fonction test():
+
+erreur_spam = test("spam/basetest/spam", True, Pspam, Pham, bspam, bham)
+erreur_ham = test("spam/basetest/ham", False, Pspam, Pham, bspam, bham)
+
+mSpamTest = len(os.listdir("spam/basetest/spam"))
+mHamTest = len(os.listdir("spam/basetest/ham"))
+total_mails = mSpamTest + mHamTest
+erreur_globale = (erreur_spam * mSpamTest + erreur_ham * mHamTest) / total_mails
+
+print(f"\nErreur de test sur {mSpamTest} SPAM : {erreur_spam:.0f} %")
+print(f"Erreur de test sur {mHamTest} HAM  : {erreur_ham:.0f} %")
+print(f"Erreur de test globale sur {total_mails} mails : {erreur_globale:.0f} %")
 
 
