@@ -67,19 +67,34 @@ def prediction(x, Pspam, Pham, bspam, bham):
 		Retourne True ou False.
 		
 	"""
-	#conversion pour s'assurer que ce sont des tableaux numpy
-	x = np.array(x)
-	bspam = np.array(bspam) 
-	bham = np.array(bham)
+	# On essaie de calculer P(spam|x) et P(ham|x)
+	#conversion en log pour éviter les problèmes numériques
+	logPSpamX = np.log(Pspam)
+	logPHamX = np.log(Pham)
 
-	#probabilité que le mail soit un spam
-	proba_spam = np.log(Pspam) + np.sum(np.where(x, np.log(bspam), np.log(1-bspam)))
-	#probabilité que le mail ne soit pas un spam
-	proba_ham = np.log(Pham) + np.sum(np.where(x, np.log(bham), np.log(1-bham)))
+	for i in range(len(x)):
+		if x[i]: 
+			logPSpamX += np.log(bspam[i])
+			logPHamX += np.log(bham[i])
+		else: 
+			logPSpamX += np.log(1 - bspam[i])
+			logPHamX += np.log(1 - bham[i])
 
-	isSpam = proba_spam > proba_ham
-	
-	return isSpam 
+	# On quitte log pour calculer les vraies proba
+	PSpam_exp = np.exp(logPSpamX)
+	PHam_exp = np.exp(logPHamX)
+
+	# calcul de P(x)
+	px = PSpam_exp + PHam_exp
+
+	#Calcul de  P(spam|x) et P(ham|x) Formule de Bayes
+	Pspam_x = PSpam_exp /px
+	Pham_x = PHam_exp / px
+
+	isSpam = Pspam_x > Pham_x
+
+	return isSpam, Pspam_x, Pham_x
+	 
 	
 def test(dossier, isSpam, Pspam, Pham, bspam, bham):
 	"""
@@ -122,8 +137,8 @@ bham = apprendBinomial(dossier_hams, fichiershams, dictionnaire)
 
 
 # Calcul des probabilités a priori Pspam et Pham:
-# Pspam = 
-# Pham = 
+Pspam = mSpam / (mSpam + mHam)
+Pham = mHam / (mSpam + mHam)
 
 
 # Calcul des erreurs avec la fonction test():
