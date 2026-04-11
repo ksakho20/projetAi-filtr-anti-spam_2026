@@ -158,7 +158,7 @@ def testClassifieur(classifieur, dossier, isSpam):
 	Pham = classifieur["Pham"]
 	bspam = classifieur["bspam"]
 	bham = classifieur["bham"]
-	dico = classifieur["dictionnaire"]
+	dictionnaire = classifieur["dictionnaire"]
 
 	fichiers = os.listdir(dossier)
 	nb_erreurs = 0
@@ -168,7 +168,7 @@ def testClassifieur(classifieur, dossier, isSpam):
 		print("Mail " + dossier+"/"+fichier)
 
 		# lecture et conversion du mail en vecteur booléen
-		x = lireMail(dossier+"/"+fichier, dico)
+		x = lireMail(dossier+"/"+fichier, dictionnaire)
 		# prédiction et récupération des probabilités a posteriori
 		pred_isSpam, Pspam_x, Pham_x = prediction(x, Pspam, Pham, bspam, bham)
 		label_predit = "SPAM" if pred_isSpam else "HAM"
