@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import math
+import pickle
 
 def lireMail(fichier, dictionnaire):
 	""" 
@@ -132,6 +133,77 @@ def test(dossier, isSpam, Pspam, Pham, bspam, bham):
 
 	return (nb_erreurs / len(fichiers)) * 100  
 
+#Améliorations
+def creerClassifieur(Pspam, Pham, bspam, bham, mSpam, mHam, dictionnaire):
+	"""
+	Encapsule tous les paramètres du classifieur dans un dictionnaire
+	"""
+	classifieur = {}
+	classifieur["Pspam"] = Pspam
+	classifieur["Pham"] = Pham
+	classifieur["bspam"] = bspam
+	classifieur["bham"] = bham
+	classifieur["mSpam"] = mSpam
+	classifieur["mHam"] = mHam # nb total de hams
+	classifieur["dictionnaire"] = dictionnaire # on garde le dico dans le classifieur
+	return classifieur
+
+def testClassifieur(classifieur, dossier, isSpam):
+	"""
+	Version améliorée de tes qui prend directement l'objet classifieur
+	plutôt que la liste de paramètres séparés.
+	Retourne le taux d'erreur
+	"""
+	Pspam = classifieur["Pspam"]
+	Pham = classifieur["Pham"]
+	bspam = classifieur["bspam"]
+	bham = classifieur["bham"]
+	dico = classifieur["dictionnaire"]
+
+	fichiers = os.listdir(dossier)
+	nb_erreurs = 0
+	label_reel = "SPAM" if isSpam else "HAM"
+
+	for idx, fichier in enumerate(fichiers):
+		print("Mail " + dossier+"/"+fichier)
+
+		# lecture et conversion du mail en vecteur booléen
+		x = lireMail(dossier+"/"+fichier, dico)
+		# prédiction et récupération des probabilités a posteriori
+		pred_isSpam, Pspam_x, Pham_x = prediction(x, Pspam, Pham, bspam, bham)
+		label_predit = "SPAM" if pred_isSpam else "HAM"
+
+		# affichage des probabilités a posteriori
+		print(f"{label_reel} numéro {idx} : P(Y=SPAM | X=x) = {Pspam_x:.6e}, P(Y=HAM | X=x) = {Pham_x:.6e}")
+
+		# détection des erreurs de classification
+		if pred_isSpam != isSpam:
+			nb_erreurs += 1
+			print(f"   => identifié comme un {label_predit} *** erreur ***")
+		else:
+			print(f"   => identifié comme un {label_predit}")
+
+	return (nb_erreurs / len(fichiers)) * 100
+
+#enregistrer le classifieur
+def enregistrerClassifieur(classifieur, fichier):
+	"""
+	Sauvegarde le classifieur dans un fichier
+	"""
+	with open(fichier, "wb") as f:
+		pickle.dump(classifieur, f)
+	print(f"Classifieur enregistré dans {fichier}")
+
+#charger le classifieur
+def chargerClassifieur(fichier):
+	"""
+	Charge le classifieur à partir d'un fichier
+	"""
+	with open(fichier, "rb") as f:
+		classifieur = pickle.load(f)
+	print(f"Classifieur chargé depuis {fichier}")
+	return classifieur
+
 ############ programme principal ############
 
 dossier_spams = "spam/baseapp/spam"	# à vérifier
@@ -158,19 +230,33 @@ bham = apprendBinomial(dossier_hams, fichiershams, dictionnaire)
 Pspam = mSpam / (mSpam + mHam)
 Pham = mHam / (mSpam + mHam)
 
+# Création du classifieur et sauvegarde dans un fichier:
+classifieur = creerClassifieur(Pspam, Pham, bspam, bham, mSpam, mHam, dictionnaire)
+enregistrerClassifieur(classifieur, "classifieur.pkl")
+classifieur = chargerClassifieur("classifieur.pkl")
 
 # Calcul des erreurs avec la fonction test():
 
 erreur_spam = test("spam/basetest/spam", True, Pspam, Pham, bspam, bham)
 erreur_ham = test("spam/basetest/ham", False, Pspam, Pham, bspam, bham)
 
+# Calcul des erreurs avec la fonction testClassifieur():
+
+erreur_spam_class = testClassifieur(classifieur, "spam/basetest/spam", True)
+erreur_ham_class = testClassifieur(classifieur, "spam/basetest/ham", False)
+
 mSpamTest = len(os.listdir("spam/basetest/spam"))
 mHamTest = len(os.listdir("spam/basetest/ham"))
 total_mails = mSpamTest + mHamTest
 erreur_globale = (erreur_spam * mSpamTest + erreur_ham * mHamTest) / total_mails
+erreur_globale_class = (erreur_spam_class * mSpamTest + erreur_ham_class * mHamTest) / total_mails
 
 print(f"\nErreur de test sur {mSpamTest} SPAM : {erreur_spam:.0f} %")
 print(f"Erreur de test sur {mHamTest} HAM  : {erreur_ham:.0f} %")
 print(f"Erreur de test globale sur {total_mails} mails : {erreur_globale:.0f} %")
+
+print(f"\nErreur de test avec classifieur sur {mSpamTest} SPAM : {erreur_spam_class:.0f} %")
+print(f"Erreur de test avec classifieur sur {mHamTest} HAM  : {erreur_ham_class:.0f} %")
+print(f"Erreur de test globale avec classifieur sur {total_mails} mails : {erreur_globale_class:.0f} %")
 
 
