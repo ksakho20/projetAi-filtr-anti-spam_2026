@@ -35,7 +35,7 @@ def charge_dico(fichier):
 	print("Chargé " + str(len(mots)) + " mots dans le dictionnaire")
 	return mots
 
-def apprendBinomial(dossier, fichiers, dictionnaire):
+def apprendBinomial(dossier, fichiers, dictionnaire, lissage=True):
 	"""
 	Fonction d'apprentissage d'une loi binomiale a partir des fichiers d'un dossier
 	Retourne un vecteur b de paramètres 
@@ -54,9 +54,13 @@ def apprendBinomial(dossier, fichiers, dictionnaire):
 				n_j[j] += 1
 
 	# lissage de Laplace epsilon = 1 
-	e = 1
-	# bj = (n_j + e) / (m + 2*e) // formule du sujet
-	b = [ (n + e) / (m + 2.0*e) for n in n_j ]
+	if lissage == True:
+		e = 1
+		# bj = (n_j + e) / (m + 2*e) // formule du sujet
+		b = [ (n + e) / (m + 2.0*e) for n in n_j ]
+	else:
+		#sans lissage, e=0
+		b = [ n / m for n in n_j ] 
 	return b
 
 
@@ -225,6 +229,12 @@ bspam = apprendBinomial(dossier_spams, fichiersspams, dictionnaire)
 print("apprentissage de bham...")
 bham = apprendBinomial(dossier_hams, fichiershams, dictionnaire)
 
+# Sans le lissage
+print("Apprentissage de bspam sans lissage de Laplace...")
+bspam_sansLissage = apprendBinomial(dossier_spams, fichiersspams, dictionnaire, lissage=False)
+print("apprentissage de bham sans lissage de Laplace...")
+bham_sansLissage = apprendBinomial(dossier_hams, fichiershams, dictionnaire, lissage=False)
+
 
 # Calcul des probabilités a priori Pspam et Pham:
 Pspam = mSpam / (mSpam + mHam)
@@ -239,6 +249,8 @@ classifieur = chargerClassifieur("classifieur.pkl")
 
 erreur_spam = test("spam/basetest/spam", True, Pspam, Pham, bspam, bham)
 erreur_ham = test("spam/basetest/ham", False, Pspam, Pham, bspam, bham)
+erreur_spam_sansLissage = test("spam/basetest/spam", True, Pspam, Pham, bspam_sansLissage, bham_sansLissage)
+erreur_ham_sansLissage = test("spam/basetest/ham", False, Pspam, Pham, bspam_sansLissage, bham_sansLissage)
 
 # Calcul des erreurs avec la fonction testClassifieur():
 
@@ -251,12 +263,15 @@ total_mails = mSpamTest + mHamTest
 erreur_globale = (erreur_spam * mSpamTest + erreur_ham * mHamTest) / total_mails
 erreur_globale_class = (erreur_spam_class * mSpamTest + erreur_ham_class * mHamTest) / total_mails
 
+# Avec le lissage
 print(f"\nErreur de test sur {mSpamTest} SPAM : {erreur_spam:.0f} %")
 print(f"Erreur de test sur {mHamTest} HAM  : {erreur_ham:.0f} %")
+# Sans le lissage
+print(f"\nErreur de test sans lissage sur {mSpamTest} SPAM : {erreur_spam_sansLissage:.0f} %")
+print(f"Erreur de test sans lissage sur {mHamTest} HAM  : {erreur_ham_sansLissage:.0f} %")
+
 print(f"Erreur de test globale sur {total_mails} mails : {erreur_globale:.0f} %")
 
 print(f"\nErreur de test avec classifieur sur {mSpamTest} SPAM : {erreur_spam_class:.0f} %")
 print(f"Erreur de test avec classifieur sur {mHamTest} HAM  : {erreur_ham_class:.0f} %")
 print(f"Erreur de test globale avec classifieur sur {total_mails} mails : {erreur_globale_class:.0f} %")
-
-
