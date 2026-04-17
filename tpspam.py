@@ -2,6 +2,7 @@ import numpy as np
 import os
 import math
 import pickle
+import re # lireMailAmeliore
 
 def lireMail(fichier, dictionnaire):
 	""" 
@@ -19,6 +20,23 @@ def lireMail(fichier, dictionnaire):
 	
 	f.close()
 	return x
+	
+def lireMailAmeliore(fichier, dictionnaire):
+	"""
+	Version améliorée de lireMail :
+	1. split par regex sur tout caractère non alphabétique (gère ponctuation, \n, \t)
+	2. utilisation d'un set pour le lookup en O(1) au lieu de O(n)
+	"""
+	f = open(fichier, "r", encoding="ascii", errors="surrogateescape")
+	mots = set(re.split(r"[^a-z]+", f.read().lower()))
+	f.close()
+
+	x = [False] * len(dictionnaire)
+	for i in range(len(dictionnaire)):
+		if dictionnaire[i] in mots:
+			x[i] = True
+
+	return x	
 
 def charge_dico(fichier):
 	f = open(fichier, "r")
@@ -70,7 +88,6 @@ def prediction(x, Pspam, Pham, bspam, bham):
 		Prédit si un mail représenté par un vecteur booléen x est un spam
 		à partir du modèle de paramètres Pspam, Pham, bspam, bham.
 		Retourne True ou False.
-		
 	"""
 	# On essaie de calculer P(spam|x) et P(ham|x)
 	#conversion en log pour éviter les problèmes numériques
@@ -84,8 +101,7 @@ def prediction(x, Pspam, Pham, bspam, bham):
 		else: 
 			logPSpamX += np.log(1 - bspam[i])
 			logPHamX += np.log(1 - bham[i])
-
-	# On quitte log pour calculer les vraies proba
+        # On quitte log pour calculer les vraies proba
 	PSpam_exp = np.exp(logPSpamX)
 	PHam_exp = np.exp(logPHamX)
 
@@ -106,7 +122,6 @@ def test(dossier, isSpam, Pspam, Pham, bspam, bham):
 		Test le classifieur de paramètres Pspam, Pham, bspam, bham 
 		sur tous les fichiers d'un dossier étiquetés 
 		comme SPAM si isSpam et HAM sinon
-		
 		Retourne le taux d'erreur 
 	"""
 	fichiers = os.listdir(dossier)
@@ -116,7 +131,6 @@ def test(dossier, isSpam, Pspam, Pham, bspam, bham):
 
 	for fichier in fichiers:
 		print("Mail " + dossier+"/"+fichier)
-
 		# lecture et conversion du mail en vecteur booléen
 		x = lireMail(dossier+"/"+fichier, dictionnaire)
 		# prédiction et récupération des probabilités a posteriori
@@ -125,7 +139,6 @@ def test(dossier, isSpam, Pspam, Pham, bspam, bham):
 
 		# affichage des probabilités a posteriori
 		print(f"{label_reel} numéro {idx} : P(Y=SPAM | X=x) = {Pspam_x:.6e}, P(Y=HAM | X=x) = {Pham_x:.6e}")
-
 		# détection des erreurs de classification
 		if pred_isSpam != isSpam:
 			nb_erreurs += 1
@@ -208,9 +221,50 @@ def chargerClassifieur(fichier):
 	print(f"Classifieur chargé depuis {fichier}")
 	return classifieur
 
+
+#ks
+def mettreAJour(classifieur, chemin_mail, est_spam):
+	"""
+	Apprentissage en ligne : met à jour le classifieur avec un seul nouveau mail.
+	Formule du sujet (page 3) :
+	    b_j(m+1) = (n_j + x_j + eps) / (m + 1 + 2*eps)
+	"""
+	dico = classifieur["dictionnaire"]
+	x = lireMail(chemin_mail, dico)
+	e = 1  # epsilon
+
+	if est_spam:
+		# on recalcule n_j à partir de b_j actuel : n_j = b_j * (m + 2e) - e
+		m = classifieur["mSpam"]
+		ancien_b = classifieur["bspam"]
+		nouveau_b = []
+		for j in range(len(dico)):
+			n_j = ancien_b[j] * (m + 2*e) - e
+			n_j_new = n_j + (1 if x[j] else 0)
+			nouveau_b.append((n_j_new + e) / (m + 1 + 2*e))
+		classifieur["bspam"] = nouveau_b
+		classifieur["mSpam"] = m + 1
+	else:
+		m = classifieur["mHam"]
+		ancien_b = classifieur["bham"]
+		nouveau_b = []
+		for j in range(len(dico)):
+			n_j = ancien_b[j] * (m + 2*e) - e
+			n_j_new = n_j + (1 if x[j] else 0)
+			nouveau_b.append((n_j_new + e) / (m + 1 + 2*e))
+		classifieur["bham"] = nouveau_b
+		classifieur["mHam"] = m + 1
+
+	# mise à jour des probabilités a priori
+	total = classifieur["mSpam"] + classifieur["mHam"]
+	classifieur["Pspam"] = classifieur["mSpam"] / total
+	classifieur["Pham"] = classifieur["mHam"] / total
+
+	return classifieur
+	
 ############ programme principal ############
 
-dossier_spams = "spam/baseapp/spam"	# à vérifier
+dossier_spams = "spam/baseapp/spam"	
 dossier_hams = "spam/baseapp/ham"
 
 fichiersspams = os.listdir(dossier_spams)
@@ -275,3 +329,30 @@ print(f"Erreur de test globale sur {total_mails} mails : {erreur_globale:.0f} %"
 print(f"\nErreur de test avec classifieur sur {mSpamTest} SPAM : {erreur_spam_class:.0f} %")
 print(f"Erreur de test avec classifieur sur {mHamTest} HAM  : {erreur_ham_class:.0f} %")
 print(f"Erreur de test globale avec classifieur sur {total_mails} mails : {erreur_globale_class:.0f} %")
+
+
+#ks
+# === TEST APPRENTISSAGE EN LIGNE ===
+print("\n===== APPRENTISSAGE EN LIGNE =====")
+print(f"mSpam avant : {classifieur['mSpam']}")
+# on ajoute 10 spams au classifieur
+for i in range(10):
+	fichiers_test = os.listdir("spam/baseapp/spam")
+	classifieur = mettreAJour(classifieur, "spam/baseapp/spam/" + fichiers_test[i], True)
+print(f"mSpam après ajout de 10 spams : {classifieur['mSpam']}")
+print(f"Pspam mis à jour : {classifieur['Pspam']:.4f}")
+
+# on re-teste après mise à jour
+erreur_spam_maj = testClassifieur(classifieur, "spam/basetest/spam", True)
+erreur_ham_maj = testClassifieur(classifieur, "spam/basetest/ham", False)
+erreur_globale_maj = (erreur_spam_maj * mSpamTest + erreur_ham_maj * mHamTest) / total_mails
+print(f"\nAprès apprentissage en ligne (+10 spams) :")
+print(f"Erreur SPAM : {erreur_spam_maj:.0f} %")
+print(f"Erreur HAM  : {erreur_ham_maj:.0f} %")
+print(f"Erreur globale : {erreur_globale_maj:.0f} %")
+
+# sauvegarde du classifieur mis à jour
+enregistrerClassifieur(classifieur, "classifieur_maj.pkl")
+
+
+
