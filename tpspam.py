@@ -57,28 +57,21 @@ def apprendBinomial(dossier, fichiers, dictionnaire, lissage=True):
 	"""
 	Fonction d'apprentissage d'une loi binomiale a partir des fichiers d'un dossier
 	Retourne un vecteur b de paramètres 
-	Conforme au sujet : on parcourt la base mail par mail (un fichier ouvert à la fois).
 	"""
 	m = len(fichiers)
-	# compteur du nombre de mails contenant chaque mot j
-	n_j = [0] * len(dictionnaire)
+	cpt = np.zeros(len(dictionnaire))
 
-	for idx, nom_f in enumerate(fichiers):
+	for nom_f in fichiers:
 		chemin = os.path.join(dossier, nom_f)
-		x = lireMail(chemin, dictionnaire)   # liste de booléens
-		# incrémenter pour chaque mot présent
-		for j, present in enumerate(x):
-			if present:
-				n_j[j] += 1
+		x = lireMail(chemin, dictionnaire)
+		cpt += x  # numpy : True=1, False=0, addition élément par élément
 
-	# lissage de Laplace epsilon = 1 
-	if lissage == True:
+	if lissage:
 		e = 1
-		# bj = (n_j + e) / (m + 2*e) // formule du sujet
-		b = [ (n + e) / (m + 2.0*e) for n in n_j ]
+		b = (cpt + e) / (m + 2.0 * e)
 	else:
-		#sans lissage, e=0
-		b = [ n / m for n in n_j ] 
+		b = cpt / m
+
 	return b
 
 
@@ -89,33 +82,23 @@ def prediction(x, Pspam, Pham, bspam, bham):
 		à partir du modèle de paramètres Pspam, Pham, bspam, bham.
 		Retourne True ou False.
 	"""
-	# On essaie de calculer P(spam|x) et P(ham|x)
-	#conversion en log pour éviter les problèmes numériques
-	logPSpamX = np.log(Pspam)
-	logPHamX = np.log(Pham)
+	x = np.array(x, dtype=bool)
+	bspam = np.array(bspam)
+	bham = np.array(bham)
 
-	for i in range(len(x)):
-		if x[i]: 
-			logPSpamX += np.log(bspam[i])
-			logPHamX += np.log(bham[i])
-		else: 
-			logPSpamX += np.log(1 - bspam[i])
-			logPHamX += np.log(1 - bham[i])
-        # On quitte log pour calculer les vraies proba
+	# calcul vectorisé des log-vraisemblances
+	logPSpamX = np.log(Pspam) + np.sum(np.log(bspam[x])) + np.sum(np.log(1 - bspam[~x]))
+	logPHamX  = np.log(Pham)  + np.sum(np.log(bham[x]))  + np.sum(np.log(1 - bham[~x]))
+
+	# probabilités a posteriori
 	PSpam_exp = np.exp(logPSpamX)
 	PHam_exp = np.exp(logPHamX)
-
-	# calcul de P(x)
 	px = PSpam_exp + PHam_exp
-
-	#Calcul de  P(spam|x) et P(ham|x) Formule de Bayes
-	Pspam_x = PSpam_exp /px
+	Pspam_x = PSpam_exp / px
 	Pham_x = PHam_exp / px
 
 	isSpam = Pspam_x > Pham_x
-
 	return isSpam, Pspam_x, Pham_x
-	 
 	
 def test(dossier, isSpam, Pspam, Pham, bspam, bham):
 	"""
