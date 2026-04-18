@@ -315,8 +315,8 @@ print(f"Erreur de test globale avec classifieur sur {total_mails} mails : {erreu
 
 
 #ks
-# === TEST APPRENTISSAGE EN LIGNE ===
-print("\n===== APPRENTISSAGE EN LIGNE =====")
+# apprentissage en ligne
+print("\n APPRENTISSAGE EN LIGNE")
 print(f"mSpam avant : {classifieur['mSpam']}")
 # on ajoute 10 spams au classifieur
 for i in range(10):
