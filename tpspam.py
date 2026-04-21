@@ -64,7 +64,7 @@ def apprendBinomial(dossier, fichiers, dictionnaire, lissage=True):
 	for nom_f in fichiers:
 		chemin = os.path.join(dossier, nom_f)
 		x = lireMail(chemin, dictionnaire)
-		cpt += x  # numpy : True=1, False=0, addition élément par élément
+		cpt += x 
 
 	if lissage:
 		e = 1
@@ -86,7 +86,7 @@ def prediction(x, Pspam, Pham, bspam, bham):
 	bspam = np.array(bspam)
 	bham = np.array(bham)
 
-	# calcul vectorisé des log-vraisemblances
+	# log-vraisemblances
 	logPSpamX = np.log(Pspam) + np.sum(np.log(bspam[x])) + np.sum(np.log(1 - bspam[~x]))
 	logPHamX  = np.log(Pham)  + np.sum(np.log(bham[x]))  + np.sum(np.log(1 - bham[~x]))
 
@@ -110,13 +110,11 @@ def test(dossier, isSpam, Pspam, Pham, bspam, bham):
 	fichiers = os.listdir(dossier)
 	nb_erreurs = 0
 	label_reel = "SPAM" if isSpam else "HAM"
-	idx = 0  # compteur pour numéroter les mails
+	idx = 0 
 
 	for fichier in fichiers:
 		print("Mail " + dossier+"/"+fichier)
-		# lecture et conversion du mail en vecteur booléen
 		x = lireMail(dossier+"/"+fichier, dictionnaire)
-		# prédiction et récupération des probabilités a posteriori
 		pred_isSpam, Pspam_x, Pham_x = prediction(x, Pspam, Pham, bspam, bham)
 		label_predit = "SPAM" if pred_isSpam else "HAM"
 
@@ -144,8 +142,8 @@ def creerClassifieur(Pspam, Pham, bspam, bham, mSpam, mHam, dictionnaire):
 	classifieur["bspam"] = bspam
 	classifieur["bham"] = bham
 	classifieur["mSpam"] = mSpam
-	classifieur["mHam"] = mHam # nb total de hams
-	classifieur["dictionnaire"] = dictionnaire # on garde le dico dans le classifieur
+	classifieur["mHam"] = mHam
+	classifieur["dictionnaire"] = dictionnaire 
 	return classifieur
 
 def testClassifieur(classifieur, dossier, isSpam):
@@ -173,10 +171,8 @@ def testClassifieur(classifieur, dossier, isSpam):
 		pred_isSpam, Pspam_x, Pham_x = prediction(x, Pspam, Pham, bspam, bham)
 		label_predit = "SPAM" if pred_isSpam else "HAM"
 
-		# affichage des probabilités a posteriori
 		print(f"{label_reel} numéro {idx} : P(Y=SPAM | X=x) = {Pspam_x:.6e}, P(Y=HAM | X=x) = {Pham_x:.6e}")
 
-		# détection des erreurs de classification
 		if pred_isSpam != isSpam:
 			nb_erreurs += 1
 			print(f"   => identifié comme un {label_predit} *** erreur ***")
@@ -185,7 +181,6 @@ def testClassifieur(classifieur, dossier, isSpam):
 
 	return (nb_erreurs / len(fichiers)) * 100
 
-#enregistrer le classifieur
 def enregistrerClassifieur(classifieur, fichier):
 	"""
 	Sauvegarde le classifieur dans un fichier
@@ -194,7 +189,6 @@ def enregistrerClassifieur(classifieur, fichier):
 		pickle.dump(classifieur, f)
 	print(f"Classifieur enregistré dans {fichier}")
 
-#charger le classifieur
 def chargerClassifieur(fichier):
 	"""
 	Charge le classifieur à partir d'un fichier
@@ -214,10 +208,10 @@ def mettreAJour(classifieur, chemin_mail, est_spam):
 	"""
 	dico = classifieur["dictionnaire"]
 	x = lireMail(chemin_mail, dico)
-	e = 1  # epsilon
+	e = 1  
 
 	if est_spam:
-		# on recalcule n_j à partir de b_j actuel : n_j = b_j * (m + 2e) - e
+		# retrouver n_j à partir de b_j
 		m = classifieur["mSpam"]
 		ancien_b = classifieur["bspam"]
 		nouveau_b = []
